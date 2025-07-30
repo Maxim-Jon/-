@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\csv_post_dispose\csv_post_dispose.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="csv_post_dispose">
+      <HintPath>..\csv_post_dispose\bin\Debug\net8.0\csv_post_dispose.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
