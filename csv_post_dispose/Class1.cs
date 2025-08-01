@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using OfficeOpenXml;
 
 namespace EpcLibrary
 {
@@ -46,7 +47,7 @@ namespace EpcLibrary
             WriteCsv(records, disposePath);
 
             // 原始和处理后EPC校对
-            var originalEpcs = LoadEpcsFromCsv(org_csvPath);
+            var originalEpcs = LoadEpcsAuto(org_csvPath);
             var processedEpcs = records.Select(r => r.Epc).ToHashSet();
             var missing = originalEpcs.Except(processedEpcs).ToList();
             if (missing.Any())
@@ -101,6 +102,52 @@ namespace EpcLibrary
             return set;
         }
 
+        /// <summary>
+        /// 从Excel中加载所有EPC值（不去重）。
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        private HashSet<string> LoadEpcsFromExcel(string path)
+        {
+            var set = new HashSet<string>();
+
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+            using var package = new ExcelPackage(new FileInfo(path));
+            var worksheet = package.Workbook.Worksheets[0]; // 默认第一张工作表
+
+            int rowCount = worksheet.Dimension.End.Row;
+
+            for (int row = 2; row <= rowCount; row++) // 从第2行开始，跳过标题
+            {
+                var epc = worksheet.Cells[row, 4].Text; // 第4列
+                if (!string.IsNullOrWhiteSpace(epc))
+                    set.Add(epc);
+            }
+
+            return set;
+        }
+
+
+
+        /// <summary>
+        /// 智能判断加载所有EPC值（不去重）。
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        /// <exception cref="NotSupportedException"></exception>
+        private HashSet<string> LoadEpcsAuto(string path)
+        {
+            var ext = Path.GetExtension(path).ToLowerInvariant();
+            return ext switch
+            {
+                ".csv" => LoadEpcsFromCsv(path),
+                ".xlsx" => LoadEpcsFromExcel(path),
+                _ => throw new NotSupportedException("不支持的文件格式: " + ext)
+            };
+        }
+
+
         private List<EpcRecord> LoadAndFilterLatestRecords(string csvPath)
         {
             var lines = File.ReadAllLines(csvPath, Encoding.UTF8);
@@ -114,7 +161,7 @@ namespace EpcLibrary
                 if (cols.Length < 12) continue;
                 if (!DateTime.TryParseExact(
                     cols[10],
-                    new[] { "yyyy/M/d H:mm:ss", "yyyy/M/d HH:mm:ss", "d/M/yyyy HH:mm:ss", "yyyy-MM-dd HH:mm:ss.fffff" },
+                    new[] { "yyyy/M/d H:mm:ss", "yyyy/M/d HH:mm:ss", "d/M/yyyy HH:mm:ss", "yyyy-MM-dd HH:mm:ss.fffff","yyyy-MM-dd HH:mm", "yyyy/M/d H:mm", "yyyy/M/d HH:mm" },
                     CultureInfo.InvariantCulture,
                     DateTimeStyles.None,
                     out var dt))
